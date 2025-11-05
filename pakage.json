@@ -1,0 +1,11 @@
+{
+  "name": "whatsapp-bot-database",
+  "version": "1.0.0",
+  "description": "WhatsApp Bot Database Manager",
+  "scripts": {
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "@vercel/node": "^2.0.0"
+  }
+}
