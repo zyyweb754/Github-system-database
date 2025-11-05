@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Bot Database Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.8;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .form-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border-left: 4px solid #667eea;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .btn:hover {
+            background: #5a6fd8;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        .table-section {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #e1e8ed;
+        }
+
+        th {
+            background: #34495e;
+            color: white;
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .status-active {
+            color: #27ae60;
+            font-weight: 600;
+        }
+
+        .status-inactive {
+            color: #e74c3c;
+            font-weight: 600;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .export-section {
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+            background: #ecf0f1;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>WhatsApp Bot Database Manager</h1>
+            <p>Manage your bot users and their status</p>
+        </div>
+
+        <div class="content">
+            <div id="message" class="message"></div>
+
+            <div class="form-section">
+                <h2>Add/Edit User</h2>
+                <form id="userForm">
+                    <div class="form-group">
+                        <label for="number">Phone Number:</label>
+                        <input type="text" id="number" placeholder="6281234567890" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="status">Status:</label>
+                        <select id="status" required>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="banned">Banned</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn" id="submitBtn">Add User</button>
+                    <button type="button" class="btn btn-danger" id="cancelEdit" style="display: none;">Cancel Edit</button>
+                </form>
+            </div>
+
+            <div class="table-section">
+                <h2>User Database</h2>
+                <table id="userTable">
+                    <thead>
+                        <tr>
+                            <th>Phone Number</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userTableBody">
+                        <!-- Data will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="export-section">
+                <button class="btn" onclick="exportData()">Export JSON Data</button>
+                <button class="btn" onclick="importData()" style="margin-left: 10px;">Import JSON File</button>
+                <input type="file" id="importFile" accept=".json" style="display: none;">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let users = [];
+        let editingIndex = -1;
+
+        // Initialize with sample data
+        const sampleData = [
+            {"number":"6285947184833","status":"active"},
+            {"number":"6285947184105","status":"active"},
+            {"number":"62881023721045","status":"active"},
+            {"number":"6285319521290","status":"active"},
+            {"number":"6287874050437","status":"active"},
+            {"number":"6281269133515","status":"active"},
+            {"number":"6283857160069","status":"active"}
+        ];
+
+        // Load data from localStorage or use sample data
+        function loadData() {
+            const savedData = localStorage.getItem('whatsappBotDatabase');
+            users = savedData ? JSON.parse(savedData) : sampleData;
+            renderTable();
+        }
+
+        // Save data to localStorage
+        function saveData() {
+            localStorage.setItem('whatsappBotDatabase', JSON.stringify(users));
+        }
+
+        // Render table
+        function renderTable() {
+            const tbody = document.getElementById('userTableBody');
+            tbody.innerHTML = '';
+
+            users.forEach((user, index) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${user.number}</td>
+                    <td><span class="status-${user.status}">${user.status}</span></td>
+                    <td class="actions">
+                        <button class="btn" onclick="editUser(${index})">Edit</button>
+                        <button class="btn btn-danger" onclick="deleteUser(${index})">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Add or update user
+        document.getElementById('userForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const number = document.getElementById('number').value;
+            const status = document.getElementById('status').value;
+
+            if (editingIndex === -1) {
+                // Add new user
+                users.push({ number, status });
+                showMessage('User added successfully!', 'success');
+            } else {
+                // Update existing user
+                users[editingIndex] = { number, status };
+                showMessage('User updated successfully!', 'success');
+                cancelEdit();
+            }
+
+            saveData();
+            renderTable();
+            this.reset();
+        });
+
+        // Edit user
+        function editUser(index) {
+            const user = users[index];
+            document.getElementById('number').value = user.number;
+            document.getElementById('status').value = user.status;
+            document.getElementById('submitBtn').textContent = 'Update User';
+            document.getElementById('cancelEdit').style.display = 'inline-block';
+            editingIndex = index;
+        }
+
+        // Cancel edit
+        document.getElementById('cancelEdit').addEventListener('click', cancelEdit);
+
+        function cancelEdit() {
+            document.getElementById('userForm').reset();
+            document.getElementById('submitBtn').textContent = 'Add User';
+            document.getElementById('cancelEdit').style.display = 'none';
+            editingIndex = -1;
+        }
+
+        // Delete user
+        function deleteUser(index) {
+            if (confirm('Are you sure you want to delete this user?')) {
+                users.splice(index, 1);
+                saveData();
+                renderTable();
+                showMessage('User deleted successfully!', 'success');
+            }
+        }
+
+        // Export data
+        function exportData() {
+            const dataStr = JSON.stringify(users, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = 'whatsapp_bot_database.json';
+            link.click();
+            
+            showMessage('Data exported successfully!', 'success');
+        }
+
+        // Import data
+        function importData() {
+            document.getElementById('importFile').click();
+        }
+
+        document.getElementById('importFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const importedData = JSON.parse(e.target.result);
+                        if (Array.isArray(importedData)) {
+                            users = importedData;
+                            saveData();
+                            renderTable();
+                            showMessage('Data imported successfully!', 'success');
+                        } else {
+                            showMessage('Invalid file format!', 'error');
+                        }
+                    } catch (error) {
+                        showMessage('Error reading file!', 'error');
+                    }
+                };
+                reader.readAsText(file);
+            }
+            this.value = ''; // Reset file input
+        });
+
+        // Show message
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type}`;
+            messageDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', loadData);
+    </script>
+</body>
+  </html>
